@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "700327700833",
+    "project_id": "albion-online-tools-7f504",
+    "storage_bucket": "albion-online-tools-7f504.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:700327700833:android:c8223717fa7f9432a77d20",
+        "android_client_info": {
+          "package_name": "com.example.proyecto_albion_tfg"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdjoxN5nlAXpDe9OQxylD0DwAYQk1IZgA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
