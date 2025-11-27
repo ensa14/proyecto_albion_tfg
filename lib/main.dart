@@ -1,9 +1,10 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:provider/provider.dart';
 
-// 👇 Importa la pantalla de inicio
+import 'firebase_options.dart';
+import 'provider/auth_provider.dart';
 import 'screens/sing-in/elegirCuenta.dart';
 
 Future<void> main() async {
@@ -14,11 +15,17 @@ Future<void> main() async {
   );
 
   if (Platform.isWindows) {
-    debugPrint(
-        "FirebaseAuth está deshabilitado en Windows (no compatible nativamente).");
+    debugPrint("FirebaseAuth está deshabilitado en Windows (no compatible nativamente).");
   }
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -29,7 +36,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Albion Helper',
-      home: const HomeScreen(), // 👈 ahora inicia en la pantalla de inicio
+      home: const HomeScreen(),
     );
   }
 }

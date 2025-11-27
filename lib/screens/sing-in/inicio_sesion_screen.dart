@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'registro_screen.dart';
 import '../index.dart';
 import '../../asset/colores/colores.dart';
+import '../../provider/auth_provider.dart';
 
 class LoginPantalla extends StatefulWidget {
   const LoginPantalla({super.key});
@@ -23,11 +26,26 @@ class _LoginPantallaState extends State<LoginPantalla> {
     super.dispose();
   }
 
-  void _iniciarSesion() {
-    if (_formKey.currentState?.validate() ?? false) {
+  Future<void> _iniciarSesion() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    final ok = await auth.login(
+      _usuarioCtrl.text.trim(),
+      _passwordCtrl.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (ok) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const PrincipalPantalla()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Credenciales incorrectas')),
       );
     }
   }
@@ -57,10 +75,12 @@ class _LoginPantallaState extends State<LoginPantalla> {
                     TextFormField(
                       controller: _usuarioCtrl,
                       decoration: InputDecoration(
-                        labelText: 'Email / Nombre de Usuario',
+                        labelText: 'Email',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.bordeInput),
+                          borderSide: const BorderSide(
+                            color: AppColors.bordeInput,
+                          ),
                         ),
                       ),
                       validator: (v) =>
@@ -74,7 +94,9 @@ class _LoginPantallaState extends State<LoginPantalla> {
                         labelText: 'Password',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.bordeInput),
+                          borderSide: const BorderSide(
+                            color: AppColors.bordeInput,
+                          ),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../asset/colores/colores.dart';
+import '../../provider/auth_provider.dart';
+import '../index.dart';
 
 class RegistroPantalla extends StatefulWidget {
   const RegistroPantalla({super.key});
@@ -25,10 +29,32 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
     super.dispose();
   }
 
-  void _crearCuenta() {
-    if (_formKey.currentState?.validate() ?? false) {
+  Future<void> _crearCuenta() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    final ok = await auth.register(
+      _nombreJuegoCtrl.text.trim(),
+      _emailCtrl.text.trim(),
+      _passwordCtrl.text.trim(),
+      _telefonoCtrl.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Creando cuenta...')),
+        const SnackBar(content: Text('Cuenta creada correctamente')),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PrincipalPantalla()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al crear la cuenta')),
       );
     }
   }
@@ -74,7 +100,9 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
                         labelText: 'Password',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.bordeInput),
+                          borderSide: const BorderSide(
+                            color: AppColors.bordeInput,
+                          ),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
