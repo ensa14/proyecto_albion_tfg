@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../asset/colores/colores.dart';
 import '../../service/objetos_api_service.dart';
 import '../../model/objetos_model.dart';
-import '../../widget/header_albion.dart';
+import '../../widget/header_build.dart';
 
 class ItemsScreen extends StatefulWidget {
   const ItemsScreen({super.key});
@@ -13,7 +13,7 @@ class ItemsScreen extends StatefulWidget {
 
 class _ItemsScreenState extends State<ItemsScreen> {
   late Future<List<Item>> _futureItems;
-  final AlbionApiService _api = AlbionApiService();
+  final AlbionApiService _api = AlbionApiService(); // retorna List<Item>
 
   String _selectedTier = 'Todos';
   String _selectedCalidad = 'Todas';
@@ -23,7 +23,6 @@ class _ItemsScreenState extends State<ItemsScreen> {
   List<Item> _allItems = [];
   List<Item> _filteredItems = [];
 
-  // Equipamiento
   final Map<String, Item?> _equippedItems = {
     'cape': null,
     'head': null,
@@ -36,22 +35,26 @@ class _ItemsScreenState extends State<ItemsScreen> {
   @override
   void initState() {
     super.initState();
-    _futureItems = _api.fetchItems();
+    _futureItems = _api.fetchItems(); // ahora devuelve List<Item>
   }
 
+  // =====================================================
+  //                 FILTROS
+  // =====================================================
   void _applyFilters() {
     setState(() {
       _filteredItems = _allItems.where((item) {
         final nameMatch =
             item.name.toLowerCase().contains(_searchText.toLowerCase());
+
         final tierMatch = _selectedTier == 'Todos' ||
             item.uniqueName.toUpperCase().startsWith(_selectedTier);
+
         final qualityMatch = _selectedCalidad == 'Todas' ||
-            item.uniqueName.toLowerCase().contains(
-                  _selectedCalidad.toLowerCase(),
-                );
+            item.uniqueName.toLowerCase().contains(_selectedCalidad.toLowerCase());
 
         bool slotMatch = true;
+
         if (_selectedSlot != null) {
           final id = item.uniqueName.toLowerCase();
           switch (_selectedSlot) {
@@ -68,7 +71,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
               slotMatch = id.contains('_cape_');
               break;
             case 'mainhand':
-              slotMatch = id.contains('_main_') || id.contains('2h_');
+              slotMatch = id.contains('_main_') || id.contains('2h');
               break;
             case 'offhand':
               slotMatch = id.contains('_off_');
@@ -96,16 +99,50 @@ class _ItemsScreenState extends State<ItemsScreen> {
     });
   }
 
+  // =====================================================
+  //             BOTÓN SIGUIENTE
+  // =====================================================
+  Widget _buildNextButton() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.amber,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            '/agregarHabilidades',
+            arguments: _equippedItems,
+          );
+        },
+        child: const Text(
+          "Siguiente",
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // =====================================================
+  //                       BUILD
+  // =====================================================
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 800;
+    final bool isMobile = MediaQuery.of(context).size.width < 800;
 
     return Scaffold(
       backgroundColor: AppColors.fondoClaro,
       body: SafeArea(
         child: Column(
           children: [
-            HeaderAlbion(
+            HeaderSimpleAlbion(
               rightContent: isMobile
                   ? null
                   : Row(
@@ -114,7 +151,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                         const SizedBox(width: 8),
                         _buildQualityFilter(),
                         const SizedBox(width: 8),
-                        _buildSearch(),
+                        SizedBox(width: 200, child: _buildSearch()),
                       ],
                     ),
             ),
@@ -125,150 +162,139 @@ class _ItemsScreenState extends State<ItemsScreen> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  } else {
-                    _allItems = snapshot.data!;
-                    if (_filteredItems.isEmpty && _searchText.isEmpty) {
-                      _filteredItems = _allItems;
-                    }
-
-                    return isMobile
-                        ? _buildMobileLayout()
-                        : _buildDesktopLayout();
                   }
+
+                  if (snapshot.hasError) {
+                    return Center(child: Text("Error: ${snapshot.error}"));
+                  }
+
+                  _allItems = snapshot.data!;
+
+                  if (_filteredItems.isEmpty && _searchText.isEmpty) {
+                    _filteredItems = List.from(_allItems);
+                  }
+
+                  return isMobile
+                      ? _buildMobileLayout()
+                      : _buildDesktopLayout();
                 },
               ),
             ),
+
+            _buildNextButton(),
           ],
         ),
       ),
     );
   }
 
-  // ============================================================
-  // 📱 MOBILE LAYOUT
-  // ============================================================
-
+  // ======================================================
+  //                     MÓVIL
+  // ======================================================
   Widget _buildMobileLayout() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildTierFilter()),
+            const SizedBox(width: 8),
+            Expanded(child: _buildQualityFilter()),
+          ],
+        ),
 
-          // Filtros compactos
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: _buildTierFilter()),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildQualityFilter()),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _buildSearch(),
-              ],
-            ),
-          ),
+        const SizedBox(height: 10),
 
-          const SizedBox(height: 20),
+        _buildSearch(),
 
-          // Panel de equipamiento (horizontal scroll)
-          SizedBox(
-            height: 120,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _equippedItems.keys.map((slot) {
-                return GestureDetector(
-                  onTap: () => _selectSlot(slot),
-                  child: Container(
-                    width: 90,
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: _selectedSlot == slot
-                          ? Colors.amber.withOpacity(0.3)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.black54),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _equippedItems[slot] != null
-                            ? Image.network(
-                                _equippedItems[slot]!.iconUrl,
-                                height: 48,
-                                fit: BoxFit.contain,
-                              )
-                            : const Icon(Icons.help_outline,
-                                color: Colors.grey, size: 36),
-                        const SizedBox(height: 4),
-                        Text(slot.toUpperCase(),
-                            style: const TextStyle(fontSize: 10)),
-                      ],
-                    ),
+        const SizedBox(height: 20),
+
+        SizedBox(
+          height: 120,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: _equippedItems.keys.map((slot) {
+              return GestureDetector(
+                onTap: () => _selectSlot(slot),
+                child: Container(
+                  width: 90,
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _selectedSlot == slot
+                        ? Colors.amber.withOpacity(0.3)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.black54),
                   ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Grid de ítems
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-              ),
-              itemCount: _filteredItems.length,
-              itemBuilder: (context, index) {
-                final item = _filteredItems[index];
-                return GestureDetector(
-                  onTap: () => _equipItem(item),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.network(
-                        item.iconUrl,
-                        height: 60,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
+                      _equippedItems[slot] != null
+                          ? Image.network(
+                              _equippedItems[slot]!.iconUrl,
+                              height: 48,
+                              fit: BoxFit.contain,
+                            )
+                          : const Icon(Icons.help_outline,
+                              color: Colors.grey, size: 36),
                       const SizedBox(height: 4),
-                      Text(
-                        item.name,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 10),
-                      ),
+                      Text(slot.toUpperCase(),
+                          style: const TextStyle(fontSize: 10)),
                     ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            }).toList(),
           ),
-        ],
-      ),
+        ),
+
+        const SizedBox(height: 20),
+
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _filteredItems.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+          ),
+          itemBuilder: (context, index) {
+            final item = _filteredItems[index];
+            return GestureDetector(
+              onTap: () => _equipItem(item),
+              child: Column(
+                children: [
+                  Image.network(
+                    item.iconUrl,
+                    height: 56,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.image_not_supported),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+
+        const SizedBox(height: 30),
+      ],
     );
   }
 
-  // ============================================================
-  // 💻 DESKTOP LAYOUT
-  // ============================================================
-
+  // ======================================================
+  //                     ESCRITORIO
+  // ======================================================
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        // Panel izquierdo
         Expanded(
           flex: 3,
           child: Container(
@@ -286,18 +312,16 @@ class _ItemsScreenState extends State<ItemsScreen> {
           ),
         ),
 
-        // Panel derecho
         Expanded(
           flex: 6,
           child: GridView.builder(
             padding: const EdgeInsets.all(16),
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+            itemCount: _filteredItems.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 5,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
             ),
-            itemCount: _filteredItems.length,
             itemBuilder: (context, index) {
               final item = _filteredItems[index];
               return GestureDetector(
@@ -326,29 +350,25 @@ class _ItemsScreenState extends State<ItemsScreen> {
     );
   }
 
-  // ============================================================
-  // WIDGETS COMPARTIDOS
-  // ============================================================
-
+  // ======================================================
+  //                  COMPONENTES COMUNES
+  // ======================================================
   Widget _buildSearch() {
-    return SizedBox(
-      width: double.infinity,
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Buscar...',
-          isDense: true,
-          prefixIcon: const Icon(Icons.search, size: 18),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+    return TextField(
+      decoration: InputDecoration(
+        hintText: "Buscar...",
+        isDense: true,
+        prefixIcon: const Icon(Icons.search, size: 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
         ),
-        onChanged: (value) {
-          _searchText = value;
-          _applyFilters();
-        },
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       ),
+      onChanged: (value) {
+        _searchText = value;
+        _applyFilters();
+      },
     );
   }
 
@@ -365,10 +385,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedTier,
-          dropdownColor: AppColors.botonSecundario,
-          items: tiers
-              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-              .toList(),
+          items: tiers.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
           onChanged: (value) {
             setState(() => _selectedTier = value!);
             _applyFilters();
@@ -398,10 +415,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedCalidad,
-          dropdownColor: AppColors.botonSecundario,
-          items: calidades
-              .map((q) => DropdownMenuItem(value: q, child: Text(q)))
-              .toList(),
+          items: calidades.map((q) => DropdownMenuItem(value: q, child: Text(q))).toList(),
           onChanged: (value) {
             setState(() => _selectedCalidad = value!);
             _applyFilters();
@@ -414,41 +428,30 @@ class _ItemsScreenState extends State<ItemsScreen> {
   Widget _buildEquipRow(List<String> slots) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: slots
-          .map(
-            (slot) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: GestureDetector(
-                onTap: () => _selectSlot(slot),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: _selectedSlot == slot
-                            ? Colors.amber.withOpacity(0.3)
-                            : Colors.white,
-                        border: Border.all(color: Colors.black54),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: _equippedItems[slot] != null
-                          ? Image.network(
-                              _equippedItems[slot]!.iconUrl,
-                              fit: BoxFit.contain,
-                            )
-                          : const Icon(Icons.help_outline,
-                              size: 32, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(slot.toUpperCase(),
-                        style: const TextStyle(fontSize: 11)),
-                  ],
-                ),
-              ),
+      children: slots.map((slot) {
+        return GestureDetector(
+          onTap: () => _selectSlot(slot),
+          child: Container(
+            width: 70,
+            height: 70,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: _selectedSlot == slot
+                  ? Colors.amber.withOpacity(0.3)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.black54),
             ),
-          )
-          .toList(),
+            child: _equippedItems[slot] != null
+                ? Image.network(
+                    _equippedItems[slot]!.iconUrl,
+                    fit: BoxFit.contain,
+                  )
+                : const Icon(Icons.help_outline,
+                    size: 32, color: Colors.grey),
+          ),
+        );
+      }).toList(),
     );
   }
 }

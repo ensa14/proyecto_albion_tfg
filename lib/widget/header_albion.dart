@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../asset/colores/colores.dart';
 import '../asset/rutas/rutas.dart';
-import '../screens/index.dart';  // 👈 IMPORTANTE
+import '../screens/index.dart';
 
 class HeaderAlbion extends StatelessWidget {
   final Widget? rightContent;
@@ -15,10 +15,16 @@ class HeaderAlbion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double width = MediaQuery.of(context).size.width;
+    final bool isMobile = width < 650;
+
     return Container(
-      height: 70,
       width: double.infinity,
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 12),
+      padding: padding ??
+          const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
       decoration: BoxDecoration(
         color: AppColors.headerFondo,
         border: Border(
@@ -32,42 +38,81 @@ class HeaderAlbion extends StatelessWidget {
           ),
         ],
       ),
+
+      child: isMobile
+          ? _buildMobileHeader(context)
+          : _buildDesktopHeader(context),
+    );
+  }
+
+  // ============================================================
+  //                        DESKTOP
+  // ============================================================
+  Widget _buildDesktopHeader(BuildContext context) {
+    return SizedBox(
+      height: 70,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // ---------- LOGO + TEXTO (CLICKABLE) ----------
-          GestureDetector(
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PrincipalPantalla(),
-                ),
-              );
-            },
-            child: Row(
-              children: [
-                Image.asset(
-                  RutasImagenes.logo,
-                  height: 40,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.shield, size: 32),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'ALBION HELPER',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.headerTexto,
-                      ),
-                ),
-              ],
+          _buildLogo(context, 40, 18),
+          if (rightContent != null) rightContent!,
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  //                        MOBILE
+  // ============================================================
+  Widget _buildMobileHeader(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Logo centrado
+        Center(
+          child: _buildLogo(context, 34, 17),
+        ),
+
+        const SizedBox(height: 12),
+
+        // RightContent a lo ancho
+        if (rightContent != null)
+          SizedBox(
+            width: double.infinity,
+            child: rightContent!,
+          ),
+      ],
+    );
+  }
+
+  // ============================================================
+  //                    LOGO + TEXTO
+  // ============================================================
+  Widget _buildLogo(BuildContext context, double height, double fontSize) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const PrincipalPantalla()),
+        );
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            RutasImagenes.logo,
+            height: height,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            "ALBION HELPER",
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: AppColors.headerTexto,
             ),
           ),
-
-          // ---------- CONTENIDO A LA DERECHA ----------
-          if (rightContent != null) rightContent!,
         ],
       ),
     );

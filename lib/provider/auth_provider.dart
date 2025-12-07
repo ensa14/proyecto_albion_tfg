@@ -11,7 +11,7 @@ class AuthProvider extends ChangeNotifier {
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
 
-  final String baseUrl = "http://localhost:3000"; 
+  final String baseUrl = AppConstants.baseUrl; 
 
   // ===========================================================
   // CARGAR TOKEN GUARDADO
@@ -37,6 +37,12 @@ class AuthProvider extends ChangeNotifier {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"email": email, "password": password}),
     );
+
+
+      print("LOGIN PAYLOAD → email: $email , password: $password");
+      print("URL LOGIN → $baseUrl/login");
+      print("STATUS CODE → ${response.statusCode}");
+      print("BODY → ${response.body}");
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
