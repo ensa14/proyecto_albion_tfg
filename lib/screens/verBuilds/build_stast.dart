@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../model/objetos_model.dart';
 import '../../model/spell_model.dart';
+import '../../service/item_stasts_service.dart';
 
-class BuildStastScreen extends StatelessWidget {
-  final Map<String, Item?> equipped;   // cape, head, armor, shoes, mainhand, offhand
-  final Map<String, Map<String, Spell?>> skills; // q/w/e/active/passive por cada slot
+class BuildStastScreen extends StatefulWidget {
+  final Map<String, Item?> equipped;
+  final Map<String, Map<String, Spell?>> skills;
 
   const BuildStastScreen({
     super.key,
@@ -12,6 +13,71 @@ class BuildStastScreen extends StatelessWidget {
     required this.skills,
   });
 
+  @override
+  State<BuildStastScreen> createState() => _BuildStastScreenState();
+}
+
+class _BuildStastScreenState extends State<BuildStastScreen> {
+  final AlbionItemStatsService _statsAPI = AlbionItemStatsService();
+
+  Map<String, double> totalStats = {};
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllStats();
+  }
+
+  // -----------------------------------------------------------
+  //         CARGA STATS DE TODOS LOS ITEMS EQUIPADOS
+  // -----------------------------------------------------------
+  Future<void> _loadAllStats() async {
+    Map<String, double> accumulator = {};
+
+    for (var entry in widget.equipped.entries) {
+      final slot = entry.key;
+      final item = entry.value;
+
+      if (item == null) continue;
+
+      final type = _slotToType(slot);
+      if (type == null) continue;
+
+      final stats = await _statsAPI.getItemStats(item.realId, type);
+
+      for (var s in stats) {
+        final name = s["name"]!;
+        final valueStr = s["value"]!.replaceAll(RegExp(r'[^0-9.]'), '');
+
+        if (valueStr.isEmpty) continue;
+
+        final value = double.tryParse(valueStr) ?? 0;
+
+        accumulator[name] = (accumulator[name] ?? 0) + value;
+      }
+    }
+
+    setState(() {
+      totalStats = accumulator;
+      loading = false;
+    });
+  }
+
+  // Convierte slot → tipo API
+  String? _slotToType(String slot) {
+    if (slot == "mainhand") return "weapon";
+    if (slot == "offhand") return "offhand";
+    if (slot == "head") return "head";
+    if (slot == "armor") return "armor";
+    if (slot == "shoes") return "shoes";
+    if (slot == "cape") return "cape";
+    return null;
+  }
+
+  // -----------------------------------------------------------
+  //                           UI
+  // -----------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,10 +88,7 @@ class BuildStastScreen extends StatelessWidget {
 
       body: Row(
         children: [
-          // -----------------------------------------------
-          //           COLUMNA IZQUIERDA — EQUIPO
-          // -----------------------------------------------
-
+          // ==================== EQUIPO ====================
           Expanded(
             flex: 2,
             child: Center(
@@ -34,42 +97,36 @@ class BuildStastScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // PRIMERA FILA
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _itemBox(equipped["cape"]),
+                        _itemBox(widget.equipped["cape"]),
                         const SizedBox(width: 12),
-                        _itemBox(equipped["head"]),
+                        _itemBox(widget.equipped["head"]),
                         const SizedBox(width: 12),
-                        _itemBox(equipped["armor"]),
+                        _itemBox(widget.equipped["armor"]),
                       ],
                     ),
                     const SizedBox(height: 20),
 
-                    // SEGUNDA FILA
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _itemBox(equipped["mainhand"]),
+                        _itemBox(widget.equipped["mainhand"]),
                         const SizedBox(width: 12),
-                        _itemBox(equipped["offhand"]),
+                        _itemBox(widget.equipped["offhand"]),
                       ],
                     ),
                     const SizedBox(height: 20),
 
-                    // TERCERA FILA (solo zapatos)
-                    _itemBox(equipped["shoes"]),
+                    _itemBox(widget.equipped["shoes"]),
                   ],
                 ),
               ),
             ),
           ),
 
-          // -----------------------------------------------
-          //        COLUMNA DERECHA — STATS + HABILIDADES
-          // -----------------------------------------------
-
+          // ==================== STATS + HABILIDADES ====================
           Expanded(
             flex: 2,
             child: Padding(
@@ -77,28 +134,24 @@ class BuildStastScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Estadísticas",
-                      style: TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text("Estadísticas Totales",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
 
-                  _statText("Vida Máxima", "+2000 HP"),
-                  _statText("Resistencia Física", "+350"),
-                  _statText("Resistencia Mágica", "+300"),
-                  _statText("Energía", "+50"),
-                  _statText("Velocidad movimiento", "-5%"),
-                  _statText("CC Resist", "+15%"),
-                  _statText("Daño habilidades", "+8%"),
-                  _statText("Curación", "+8%"),
-                  _statText("Daño autoataques", "+5%"),
+                  if (loading)
+                    const CircularProgressIndicator()
+                  else
+                    ...totalStats.entries.map(
+                      (stat) => _statText(stat.key, stat.value.toString()),
+                    ),
 
                   const SizedBox(height: 25),
 
-                  const Text("Habilidades Seleccionadas",
-                      style: TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Habilidades Seleccionadas",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
-
                   Wrap(
                     spacing: 12,
                     children: _abilityIcons(),
@@ -106,50 +159,58 @@ class BuildStastScreen extends StatelessWidget {
 
                   const Spacer(),
 
-                  // -----------------------
-                  //   GUARDAR BUILD
-                  // -----------------------
-                  ElevatedButton(
-                    onPressed: () {
-                      // Guardar en API, Firebase o local
-                      print("Guardar build...");
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Center(
-                      child: Text(
+                  // ---------- GUARDAR BUILD ----------
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        print("Guardar build...");
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        minimumSize: const Size(double.infinity, 55),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: const Text(
                         "Guardar Build",
                         style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
+                          fontSize: 20,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
-                  // -----------------------
-                  //        VOLVER
-                  // -----------------------
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Center(
-                      child: Text(
+                  // ---------- VOLVER ----------
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black87,
+                        minimumSize: const Size(double.infinity, 55),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: const Text(
                         "← Volver",
                         style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
+                          fontSize: 20,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
+
                 ],
               ),
             ),
@@ -159,9 +220,9 @@ class BuildStastScreen extends StatelessWidget {
     );
   }
 
-  // --------------------------------------------------
-  //  CAJA PARA MOSTRAR UN ITEM EQUIPADO
-  // --------------------------------------------------
+  // -----------------------------------------------------------
+  // Widgets reutilizables
+  // -----------------------------------------------------------
   Widget _itemBox(Item? item) {
     return Container(
       width: 95,
@@ -177,9 +238,6 @@ class BuildStastScreen extends StatelessWidget {
     );
   }
 
-  // --------------------------------------------------
-  //  TEXTO DE UN STAT
-  // --------------------------------------------------
   Widget _statText(String stat, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -188,25 +246,22 @@ class BuildStastScreen extends StatelessWidget {
     );
   }
 
-  // --------------------------------------------------
-  //  ICONOS DE HABILIDADES ELEGIDAS
-  // --------------------------------------------------
   List<Widget> _abilityIcons() {
     List<Spell?> all = [];
 
-    for (var slot in skills.keys) {
-      all.add(skills[slot]!["q"]);
-      all.add(skills[slot]!["w"]);
-      all.add(skills[slot]!["e"]);
-      all.add(skills[slot]!["active"]);
-      all.add(skills[slot]!["passive"]);
+    for (var slot in widget.skills.keys) {
+      all.add(widget.skills[slot]!["q"]);
+      all.add(widget.skills[slot]!["w"]);
+      all.add(widget.skills[slot]!["e"]);
+      all.add(widget.skills[slot]!["active"]);
+      all.add(widget.skills[slot]!["passive"]);
     }
 
-    return all
-        .where((s) => s != null)
-        .map((s) => ClipOval(
-              child: Image.network(s!.icon, height: 48, width: 48),
-            ))
-        .toList();
+    return all.where((s) => s != null).map(
+      (s) {
+        return ClipOval(
+            child: Image.network(s!.icon, height: 48, width: 48));
+      },
+    ).toList();
   }
 }
