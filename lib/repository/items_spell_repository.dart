@@ -62,7 +62,8 @@ class AlbionRepository {
       );
     }
 
-    final all = await _spellsApi.loadSpellsByRealId(item.realId);
+    final all = await _spellsApi.loadSpellsByRealId(item.realId, item.type);
+
 
     // Separar por slots de OpenAlbion:
     final q = all.where((s) => s.slot == "First Slot").toList();

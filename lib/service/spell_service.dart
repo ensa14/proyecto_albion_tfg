@@ -12,10 +12,21 @@ class SpellsApiService {
     return double.tryParse(str) ?? 0;
   }
 
-  Future<List<Spell>> loadSpellsByRealId(int id) async {
-    final url = Uri.parse("$base/spells/weapon/$id");
+  /// Detectar correctamente si es arma o armadura por su identifier real
+  Future<List<Spell>> loadSpellsByRealId(int id, String itemType) async {
+    final lower = itemType.toLowerCase();
 
-    print("🔵 Consultando spells por ID real → $url");
+    /// 🔍 Detectamos si es armadura (incluye casco, pechera y botas)
+    final bool isArmor = lower.contains("armor") ||
+                         lower.contains("head")  ||
+                         lower.contains("shoe")  ||
+                         lower.contains("boots");
+
+    final String type = isArmor ? "armor" : "weapon";
+
+    final url = Uri.parse("$base/spells/$type/$id");
+
+    print("🔵 Consultando spells: $url  (detectado: $type)");
 
     final resp = await http.get(url);
 
@@ -27,7 +38,7 @@ class SpellsApiService {
     final jsonData = json.decode(resp.body);
 
     if (jsonData["data"] == null) {
-      print("⚠️ Spells vacíos para ID $id");
+      print("⚠️ Spells vacíos para ID $id ($type)");
       return [];
     }
 
@@ -45,12 +56,15 @@ class SpellsApiService {
             slot: slot,
             icon: s["icon"] ?? "",
             description: s["description"] ?? "",
+            preview: s["preview"],
+
             cooldown: parseNumber(
               s["attributes"]?.firstWhere(
                 (a) => a["name"] == "Cooldown",
                 orElse: () => {"value": "0"},
               )["value"],
             ),
+
             energyCost: parseNumber(
               s["attributes"]?.firstWhere(
                 (a) => a["name"] == "Energy Cost",
@@ -62,7 +76,7 @@ class SpellsApiService {
       }
     }
 
-    print("✅ Spells cargados: ${spells.length} para ID real $id");
+    print("✅ Spells cargados: ${spells.length} para ID real $id [$type]");
     return spells;
   }
 }

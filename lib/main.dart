@@ -5,10 +5,11 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'provider/auth_provider.dart';
-import 'screens/sing-in/elegirCuenta.dart';
 
-// ⬅️ AÑADE: importar tu pantalla de habilidades
+// PANTALLAS
+import 'screens/sing-in/elegirCuenta.dart';
 import 'screens/verBuilds/agregarHabilidades.dart';
+import 'screens/verBuilds/build_stast.dart'; // <-- AGREGA ESTA IMPORTACIÓN
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,9 +41,19 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Albion Helper',
 
-      // ⭐ AÑADIMOS LAS RUTAS AQUÍ
       routes: {
         '/agregarHabilidades': (context) => const AgregarHabilidadesScreen(),
+
+    
+        '/buildStats': (context) {
+          final args =
+              ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+
+          return BuildStastScreen(
+            equipped: args['equipped'],
+            skills: args['skills'],
+          );
+        },
       },
 
       home: const HomeScreen(),

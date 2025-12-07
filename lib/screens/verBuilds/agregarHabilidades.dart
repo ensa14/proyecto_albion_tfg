@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../model/objetos_model.dart';
 import '../../service/spell_service.dart';
@@ -24,6 +25,45 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
 
   bool initialized = false;
 
+  // TIMER PARA GIF PREVIEW
+  Timer? _previewTimer;
+
+  void _cancelPreviewTimer() {
+    _previewTimer?.cancel();
+    _previewTimer = null;
+  }
+
+  void _startPreviewTimer(BuildContext context, String? previewUrl) {
+    if (previewUrl == null || previewUrl.isEmpty) return;
+
+    _previewTimer = Timer(const Duration(seconds: 4), () {
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.black87,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Vista previa", style: TextStyle(color: Colors.white)),
+                const SizedBox(height: 10),
+
+                Image.network(
+                  previewUrl,
+                  errorBuilder: (_, __, ___) => const Text(
+                    "GIF no disponible",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!initialized) {
@@ -39,6 +79,7 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
           "q": null,
           "w": null,
           "e": null,
+          "active": null,
           "passive": null,
         };
       }
@@ -76,9 +117,17 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
             backgroundColor: Colors.amber,
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
-          onPressed: () {
-            Navigator.pop(context, selectedSpells);
+         onPressed: () {
+            Navigator.pushNamed(
+              context,
+              '/buildStats',
+              arguments: {
+                "equipped": equippedItems,
+                "skills": selectedSpells,
+              },
+            );
           },
+
           child: const Text(
             "Continuar",
             style: TextStyle(
@@ -140,7 +189,7 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
 
     setState(() => loading[slot] = true);
 
-    final spells = await _api.loadSpellsByRealId(item.realId);
+    final spells = await _api.loadSpellsByRealId(item.realId, item.type);
 
     setState(() {
       loadedSpells[slot] = spells;
@@ -149,10 +198,11 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
   }
 
   // -------------------------------------------------
-  // CONTENIDO EXPANDIDO DE SPELLS
+  // CONTENIDO EXPANDIDO — MOSTRAR HABILIDADES
   // -------------------------------------------------
   Widget _buildSpellContent(String slot) {
     final spells = loadedSpells[slot] ?? [];
+    final item = equippedItems[slot]!;
 
     if (loading[slot] == true) {
       return const Padding(
@@ -168,11 +218,25 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
       );
     }
 
-    // Slots según la API nueva
-    final q = spells.where((s) => s.slot == "First Slot").toList();
-    final w = spells.where((s) => s.slot == "Second Slot").toList();
-    final e = spells.where((s) => s.slot == "Third Slot").toList();
-    final passive = spells.where((s) => s.slot == "Passive").toList();
+    bool isPlate = item.identifier.contains("PLATE");
+
+    List<Spell> q = spells.where((s) => s.slot == "First Slot").toList();
+    List<Spell> w = spells.where((s) => s.slot == "Second Slot").toList();
+    List<Spell> e = spells.where((s) => s.slot == "Third Slot").toList();
+
+    List<Spell> passive = spells.where((s) => s.slot == "Passive").toList();
+
+   List<Spell> armorActive = [];
+
+    if (spells.any((s) => s.slot == "Fourth Slot")) {
+      armorActive = spells.where((s) => s.slot == "Fourth Slot").toList();
+    } 
+    else if (spells.any((s) => s.slot == "Fifth Slot")) {
+      armorActive = spells.where((s) => s.slot == "Fifth Slot").toList();
+    } 
+    else if (spells.any((s) => s.slot == "Sixth Slot")) {
+      armorActive = spells.where((s) => s.slot == "Sixth Slot").toList();
+    }
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -183,6 +247,14 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
       ),
       child: Column(
         children: [
+          if (armorActive.isNotEmpty)
+            _spellDropdown(
+              slot: slot,
+              title: "Habilidad",
+              keyName: "active",
+              items: armorActive,
+            ),
+
           if (q.isNotEmpty)
             _spellDropdown(slot: slot, title: "Q", keyName: "q", items: q),
 
@@ -194,14 +266,18 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
 
           if (passive.isNotEmpty)
             _spellDropdown(
-                slot: slot, title: "Pasiva", keyName: "passive", items: passive),
+              slot: slot,
+              title: "Pasiva",
+              keyName: "passive",
+              items: passive,
+            ),
         ],
       ),
     );
   }
 
   // -------------------------------------------------
-  // DROPDOWN DE SPELLS
+  // DROPDOWN DE SPELL CON PREVIEW
   // -------------------------------------------------
   Widget _spellDropdown({
     required String slot,
@@ -212,9 +288,11 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style:
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 4),
 
         DropdownButton<Spell>(
@@ -224,12 +302,20 @@ class _AgregarHabilidadesScreenState extends State<AgregarHabilidadesScreen> {
           items: items.map((spell) {
             return DropdownMenuItem(
               value: spell,
-              child: Row(
-                children: [
-                  Image.network(spell.icon, height: 32, width: 32),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(spell.name)),
-                ],
+              child: MouseRegion(
+                onEnter: (_) {
+                  _startPreviewTimer(context, spell.preview);
+                },
+                onExit: (_) {
+                  _cancelPreviewTimer();
+                },
+                child: Row(
+                  children: [
+                    Image.network(spell.icon, height: 32, width: 32),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(spell.name)),
+                  ],
+                ),
               ),
             );
           }).toList(),

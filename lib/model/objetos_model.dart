@@ -41,95 +41,88 @@ class Item {
     required this.identifier,
   });
 
-  factory Item.fromJson(Map<String, dynamic> json) {
-    // El dump NO trae realId → siempre 0 al inicio
-    int realId = 0;
+ factory Item.fromJson(Map<String, dynamic> json) {
+  int realId = 0;
+  int index = json["Index"] ?? json["index"] ?? 0;
 
-    int index = json["Index"] ?? json["index"] ?? 0;
+  final String id = json['UniqueName'] ??
+      json['@uniquename'] ??
+      json['uniquename'] ??
+      json['Id'] ??
+      json['id'] ??
+      '';
 
-    // UniqueName = el nombre REAL usado en la API nueva
-    final String id = json['UniqueName'] ??
-        json['@uniquename'] ??
-        json['uniquename'] ??
-        json['Id'] ??
-        json['id'] ??
-        '';
+  // identifier = UniqueName SIEMPRE
+  final String identifier = id;
 
-    // El identifier SIEMPRE será el UniqueName
-    final String identifier = id;
-
-    // Nombre visible
-    String name = id;
-    final localized = json['LocalizedNames'];
-    if (localized is Map && localized.isNotEmpty) {
-      name = localized.values.first.toString();
-    }
-
-    final String iconUrl =
-        'https://render.albiononline.com/v1/item/$id.png';
-
-    final shopCat =
-        (json['ShopCategory'] ?? json['shopcategory'] ?? '')
-            .toString()
-            .toLowerCase();
-
-    final shopSub =
-        (json['ShopSubCategory1'] ?? json['shopsubcategory1'] ?? '')
-            .toString()
-            .toLowerCase();
-
-    String type = "unknown";
-
-    if (shopCat == 'equipment') {
-      if (shopSub.contains('mainhand') ||
-          shopSub.contains('2h') ||
-          shopSub.contains('offhand')) {
-        type = "weapon";
-      } else {
-        type = "armor";
-      }
-    }
-
-    if (id.contains("FOOD_")) type = "food";
-    if (id.contains("POTION_")) type = "potion";
-
-    List<String> extractSpells(dynamic slot) {
-      if (slot == null || slot is! List) return [];
-      return slot
-          .map((e) => e["Spell"]?.toString() ?? "")
-          .where((s) => s.isNotEmpty)
-          .toList();
-    }
-
-    final active = extractSpells(json["ActiveSpellSlots"]);
-    final passive = extractSpells(json["PassiveSpellSlots"]);
-
-    double getStat(String key) {
-      final raw = json[key]?.toString();
-      return double.tryParse(raw ?? "0") ?? 0;
-    }
-
-    // LOG ÚTIL
-    print("ITEM: $id | identifier asignado = $identifier");
-
-    return Item(
-      realId: realId,
-      index: index,
-      id: id,
-      name: name,
-      uniqueName: id,
-      identifier: identifier,
-      iconUrl: iconUrl,
-      type: type,
-      activeSpells: active,
-      passiveSpells: passive,
-      attackDamage: getStat('@attackdamage'),
-      attackSpeed: getStat('@attackspeed'),
-      attackRange: getStat('@attackrange'),
-      itemPower: getStat('@itempower'),
-      abilityPower: getStat('@abilitypower'),
-      weight: getStat('@weight'),
-      durability: getStat('@durability'),
-    );
+  // Nombre visible
+  String name = id;
+  final localized = json['LocalizedNames'];
+  if (localized is Map && localized.isNotEmpty) {
+    name = localized.values.first.toString();
   }
+
+  final String iconUrl =
+      'https://render.albiononline.com/v1/item/$id.png';
+
+  // ============================
+  // 🔥 DETECCIÓN REAL DE TIPO
+  // ============================
+  String type = "unknown";
+
+  final u = id.toUpperCase();
+
+  if (u.contains("_MAIN_") || u.contains("_2H_") || u.contains("_OFF_")) {
+    type = "weapon";
+  } else if (
+      u.contains("_HEAD_") ||
+      u.contains("_ARMOR_") ||
+      u.contains("_SHOES_") ||
+      u.contains("_CAPE_")) {
+    type = "armor";
+  }
+
+  // Consumibles
+  if (u.contains("FOOD_")) type = "food";
+  if (u.contains("POTION_")) type = "potion";
+
+  List<String> extractSpells(dynamic slot) {
+    if (slot == null || slot is! List) return [];
+    return slot
+        .map((e) => e["Spell"]?.toString() ?? "")
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  final active = extractSpells(json["ActiveSpellSlots"]);
+  final passive = extractSpells(json["PassiveSpellSlots"]);
+
+  double getStat(String key) {
+    final raw = json[key]?.toString();
+    return double.tryParse(raw ?? "0") ?? 0;
+  }
+
+  print("ITEM: $id | TYPE DETECTED = $type");
+
+  return Item(
+    realId: realId,
+    index: index,
+    id: id,
+    name: name,
+    uniqueName: id,
+    identifier: identifier,
+    iconUrl: iconUrl,
+    type: type,
+    activeSpells: active,
+    passiveSpells: passive,
+    attackDamage: getStat('@attackdamage'),
+    attackSpeed: getStat('@attackspeed'),
+    attackRange: getStat('@attackrange'),
+    itemPower: getStat('@itempower'),
+    abilityPower: getStat('@abilitypower'),
+    weight: getStat('@weight'),
+    durability: getStat('@durability'),
+  );
+}
+
 }

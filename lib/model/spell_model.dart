@@ -7,6 +7,9 @@ class Spell {
   final double cooldown;
   final double energyCost;
 
+  // NUEVO → puede venir null
+  final String? preview;
+
   Spell({
     required this.id,
     required this.name,
@@ -15,6 +18,7 @@ class Spell {
     required this.slot,
     required this.cooldown,
     required this.energyCost,
+    required this.preview, // <-- agregado al constructor
   });
 
   factory Spell.fromJson(Map<String, dynamic> json) {
@@ -46,9 +50,12 @@ class Spell {
       icon: json["icon"] ?? "",
       slot: json["slot"] ?? "",
 
-      // atributos reales de la API nueva
+      // atributos reales
       cooldown: parseValue("Cooldown"),
       energyCost: parseValue("Energy Cost"),
+
+      // NUEVO → URL del GIF
+      preview: json["preview"], // puede ser null
     );
   }
 }
