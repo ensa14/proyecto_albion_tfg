@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../model/objetos_model.dart';
 import '../../model/spell_model.dart';
 import '../../service/item_stasts_service.dart';
+import '../../service/save_build_service.dart';
+import '../../provider/auth_provider.dart';
 
 class BuildStastScreen extends StatefulWidget {
   final Map<String, Item?> equipped;
@@ -29,9 +33,9 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
     _loadAllStats();
   }
 
-  // -----------------------------------------------------------
-  //         CARGA STATS DE TODOS LOS ITEMS EQUIPADOS
-  // -----------------------------------------------------------
+  //--------------------------------------------------------------------
+  //  CARGAR STATS DE TODOS LOS ITEMS EQUIPADOS
+  //--------------------------------------------------------------------
   Future<void> _loadAllStats() async {
     Map<String, double> accumulator = {};
 
@@ -64,7 +68,9 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
     });
   }
 
-  // Convierte slot → tipo API
+  //--------------------------------------------------------------------
+  //  CONVERTIR SLOT → API TYPE
+  //--------------------------------------------------------------------
   String? _slotToType(String slot) {
     if (slot == "mainhand") return "weapon";
     if (slot == "offhand") return "offhand";
@@ -75,9 +81,9 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
     return null;
   }
 
-  // -----------------------------------------------------------
-  //                           UI
-  // -----------------------------------------------------------
+  //--------------------------------------------------------------------
+  //  UI
+  //--------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,7 +94,9 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
 
       body: Row(
         children: [
-          // ==================== EQUIPO ====================
+          //------------------------------------------------------------
+          // COLUMNA IZQUIERDA — ITEMS EQUIPADOS
+          //------------------------------------------------------------
           Expanded(
             flex: 2,
             child: Center(
@@ -107,6 +115,7 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
                         _itemBox(widget.equipped["armor"]),
                       ],
                     ),
+
                     const SizedBox(height: 20),
 
                     Row(
@@ -117,6 +126,7 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
                         _itemBox(widget.equipped["offhand"]),
                       ],
                     ),
+
                     const SizedBox(height: 20),
 
                     _itemBox(widget.equipped["shoes"]),
@@ -126,92 +136,118 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
             ),
           ),
 
-          // ==================== STATS + HABILIDADES ====================
+          //------------------------------------------------------------
+          // COLUMNA DERECHA — STATS + HABILIDADES + BOTONES
+          //------------------------------------------------------------
           Expanded(
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Estadísticas Totales",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-
-                  if (loading)
-                    const CircularProgressIndicator()
-                  else
-                    ...totalStats.entries.map(
-                      (stat) => _statText(stat.key, stat.value.toString()),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Estadísticas Totales",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
 
-                  const SizedBox(height: 25),
+                    const SizedBox(height: 16),
 
-                  const Text(
-                    "Habilidades Seleccionadas",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    children: _abilityIcons(),
-                  ),
-
-                  const Spacer(),
-
-                  // ---------- GUARDAR BUILD ----------
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        print("Guardar build...");
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: const Size(double.infinity, 55),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        elevation: 2,
+                    if (loading)
+                      const CircularProgressIndicator()
+                    else
+                      ...totalStats.entries.map(
+                        (stat) => _statText(stat.key, stat.value.toString()),
                       ),
-                      child: const Text(
-                        "Guardar Build",
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+
+                    const SizedBox(height: 25),
+
+                    const Text(
+                      "Habilidades Seleccionadas",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Wrap(
+                      spacing: 12,
+                      children: _abilityIcons(),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    //------------------------------------------------------------
+                    // BOTÓN GUARDAR BUILD
+                    //------------------------------------------------------------
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final service = BuildFirestoreService();
+                          final auth = Provider.of<AuthProvider>(context, listen: false);
+                          await service.saveBuild(
+                            userToken: auth.token!,
+                            nombre: "Mi nueva build",
+                            descripcion: "Build creada desde la app",
+                            clase: "Desconocida",
+                            equipped: widget.equipped,
+                            skills: widget.skills,
+                            totalStats: totalStats,
+                          );
+
+                          if (!mounted) return;
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text("Build guardada correctamente")),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          minimumSize: const Size(double.infinity, 55),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text(
+                          "Guardar Build",
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                  // ---------- VOLVER ----------
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black87,
-                        minimumSize: const Size(double.infinity, 55),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                    //------------------------------------------------------------
+                    // BOTÓN VOLVER
+                    //------------------------------------------------------------
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black87,
+                          minimumSize: const Size(double.infinity, 55),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                         ),
-                        elevation: 2,
-                      ),
-                      child: const Text(
-                        "← Volver",
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                        child: const Text(
+                          "← Volver",
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -220,9 +256,9 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
     );
   }
 
-  // -----------------------------------------------------------
-  // Widgets reutilizables
-  // -----------------------------------------------------------
+  //--------------------------------------------------------------------
+  //  WIDGETS AUXILIARES
+  //--------------------------------------------------------------------
   Widget _itemBox(Item? item) {
     return Container(
       width: 95,
@@ -241,8 +277,10 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
   Widget _statText(String stat, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text("$stat: $value",
-          style: const TextStyle(fontSize: 16, height: 1.3)),
+      child: Text(
+        "$stat: $value",
+        style: const TextStyle(fontSize: 16, height: 1.3),
+      ),
     );
   }
 
@@ -257,11 +295,10 @@ class _BuildStastScreenState extends State<BuildStastScreen> {
       all.add(widget.skills[slot]!["passive"]);
     }
 
-    return all.where((s) => s != null).map(
-      (s) {
-        return ClipOval(
-            child: Image.network(s!.icon, height: 48, width: 48));
-      },
-    ).toList();
+    return all
+        .where((s) => s != null)
+        .map((s) =>
+            ClipOval(child: Image.network(s!.icon, height: 48, width: 48)))
+        .toList();
   }
 }

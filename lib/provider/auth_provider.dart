@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../common/constantes.dart'; //archivo con variables que pueden cambiar (ejemplo url, ais solo lo tengo que cambiar una vez)
+
+import '../common/constantes.dart';
 
 class AuthProvider extends ChangeNotifier {
   String? _token;
@@ -11,10 +12,10 @@ class AuthProvider extends ChangeNotifier {
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
 
-  final String baseUrl = AppConstants.baseUrl; 
+  final String baseUrl = AppConstants.baseUrl;
 
   // ===========================================================
-  // CARGAR TOKEN GUARDADO
+  // CARGAR TOKEN Y USUARIO DESDE ALMACENAMIENTO LOCAL
   // ===========================================================
   Future<void> loadUserFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
@@ -38,11 +39,10 @@ class AuthProvider extends ChangeNotifier {
       body: jsonEncode({"email": email, "password": password}),
     );
 
-
-      print("LOGIN PAYLOAD → email: $email , password: $password");
-      print("URL LOGIN → $baseUrl/login");
-      print("STATUS CODE → ${response.statusCode}");
-      print("BODY → ${response.body}");
+    print("LOGIN PAYLOAD → email: $email , password: $password");
+    print("URL LOGIN → $baseUrl/login");
+    print("STATUS CODE → ${response.statusCode}");
+    print("BODY → ${response.body}");
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -78,11 +78,11 @@ class AuthProvider extends ChangeNotifier {
       }),
     );
 
-      print("REGISTER RESPONSE STATUS: ${response.statusCode}");
-      print("REGISTER RESPONSE BODY: ${response.body}");
+    print("REGISTER RESPONSE STATUS: ${response.statusCode}");
+    print("REGISTER RESPONSE BODY: ${response.body}");
+
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
-
 
       _token = data["token"];
       _user = data["user"];
@@ -91,8 +91,6 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString("token", _token!);
 
       notifyListeners();
-
-    
       return true;
     }
 
@@ -100,7 +98,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ===========================================================
-  // OBTENER DATOS DEL USUARIO (TOKEN)
+  // OBTENER DATOS DEL USUARIO DESDE API (USANDO TOKEN)
   // ===========================================================
   Future<void> fetchUserData() async {
     if (_token == null) return;
@@ -111,14 +109,27 @@ class AuthProvider extends ChangeNotifier {
       url,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Token $_token"
+        "Authorization": "Token $_token",
       },
     );
+
+    print("FETCH USER → status: ${response.statusCode}");
+    print("FETCH BODY → ${response.body}");
 
     if (response.statusCode == 200) {
       _user = jsonDecode(response.body);
       notifyListeners();
     }
+  }
+
+  // ===========================================================
+  // ACTUALIZAR AVATAR LOCALMENTE (DESPUÉS DE SUBIRLO A FIREBASE)
+  // ===========================================================
+  Future<void> updateAvatar(String url) async {
+    if (_user == null) return;
+
+    _user!["avatarUrl"] = url;
+    notifyListeners();
   }
 
   // ===========================================================

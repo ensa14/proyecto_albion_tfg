@@ -15,7 +15,7 @@ class PerfilPantalla extends StatelessWidget {
             children: [
               const SizedBox(height: 40),
 
-              // ====== FOTO DE PERFIL ======
+              // ====== FOTO DE PERFIL (ICONO FIJO) ======
               const CircleAvatar(
                 radius: 45,
                 backgroundColor: Color(0xFFEDE7F6),
@@ -25,9 +25,10 @@ class PerfilPantalla extends StatelessWidget {
                   color: Color(0xFF6A1B9A),
                 ),
               ),
+
               const SizedBox(height: 40),
 
-              // ====== BOTÓN: CAMBIAR FOTO ======
+              // ====== BOTÓN: CAMBIAR FOTO (solo mensaje) ======
               SizedBox(
                 width: 300,
                 child: Material(
@@ -64,12 +65,11 @@ class PerfilPantalla extends StatelessWidget {
               SizedBox(
                 width: 300,
                 child: Material(
-                  color: Colors.red.shade700,
+                  color: Colors.red,
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
                     onTap: () {
-                      // Cierra sesión y vuelve al Login
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (_) => const PrincipalPantalla()),
